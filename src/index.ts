@@ -2,7 +2,17 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { parse, buildASTSchema, ObjectTypeDefinitionNode, EnumTypeDefinitionNode, TypeNode, GraphQLSchema } from 'graphql';
+import {
+  parse,
+  buildASTSchema,
+  ObjectTypeDefinitionNode,
+  EnumTypeDefinitionNode,
+  TypeNode,
+  GraphQLSchema,
+  InterfaceTypeDefinitionNode,
+  UnionTypeDefinitionNode,
+  ScalarTypeDefinitionNode,
+} from 'graphql';
 
 const schemaPath = process.argv[2] ?? './schema.graphql';
 const outputPath = process.argv[3] ?? './src/__generated__/schema.graphql.ts';
@@ -21,14 +31,21 @@ const getType = (typeNode: TypeNode): string => {
   }
 };
 
-const convertTSUnionTypeString = (node: EnumTypeDefinitionNode): string => {
+const convertGraphQLEnum = (node: EnumTypeDefinitionNode): string => {
   if (!node.values) return '';
 
   const enumValues = node.values.map((value) => `"${value.name.value}"`).join(' | ');
   return `export type ${node.name.value} = ${enumValues} | "%future added value";`;
 };
 
-const convertTSValueString = (typeName: string): string => {
+const convertGraphQLValue = (typeName: string): string => {
+  if (typeName.includes('Array<')) {
+    const regex = /<([^>]+)>/;
+    const match = typeName.match(regex);
+
+    if (match) return convertGraphQLValue(match[1]);
+  }
+
   switch (typeName) {
     case 'Int':
     case 'Float':
@@ -43,7 +60,7 @@ const convertTSValueString = (typeName: string): string => {
   }
 };
 
-const convertTSObjectTypeString = (type: ObjectTypeDefinitionNode): string => {
+const convertGraphQLObject = (type: ObjectTypeDefinitionNode | InterfaceTypeDefinitionNode): string => {
   if (!type.fields) return '';
 
   const fields = type.fields
@@ -51,10 +68,31 @@ const convertTSObjectTypeString = (type: ObjectTypeDefinitionNode): string => {
       const fieldType = getType(field.type);
       const nullable = field.type.kind !== 'NonNullType' ? ' | null' : '';
 
-      return `${field.name.value}: ${convertTSValueString(fieldType)}${nullable}`;
+      return `${field.name.value}: ${convertGraphQLValue(fieldType)}${nullable}`;
     })
     .join('; ');
   return `export type ${type.name.value} = { ${fields} };`;
+};
+
+const convertGraphQLUnion = (node: UnionTypeDefinitionNode) => {
+  if (!node.types) return '';
+
+  const unionTypes = node.types.map((type) => getType(type)).join(' | ');
+  return `export type ${node.name.value} = ${unionTypes};`;
+};
+
+const convertGraphQLScaler = (node: ScalarTypeDefinitionNode) => {
+  switch (node.name.value) {
+    case 'Int':
+    case 'Float':
+      return `export type ${node.name.value} = number;`;
+    case 'String':
+    case 'ID':
+    case 'Boolean':
+      return `export type ${node.name.value} = boolean;`;
+    default:
+      return `export type ${node.name.value} = string;`;
+  }
 };
 
 const parseGraphQLSchemaToTypeAliasString = (schema: GraphQLSchema): string => {
@@ -64,10 +102,14 @@ const parseGraphQLSchemaToTypeAliasString = (schema: GraphQLSchema): string => {
   for (const type of Object.values(schema.getTypeMap())) {
     if (!type.astNode) continue;
 
-    if (type.astNode.kind === 'ObjectTypeDefinition') {
-      typeDefs.push(convertTSObjectTypeString(type.astNode));
+    if (type.astNode.kind === 'ObjectTypeDefinition' || type.astNode.kind === 'InterfaceTypeDefinition') {
+      typeDefs.push(convertGraphQLObject(type.astNode));
     } else if (type.astNode.kind === 'EnumTypeDefinition') {
-      unionTypes.push(convertTSUnionTypeString(type.astNode));
+      unionTypes.push(convertGraphQLEnum(type.astNode));
+    } else if (type.astNode.kind === 'UnionTypeDefinition') {
+      typeDefs.push(convertGraphQLUnion(type.astNode));
+    } else if (type.astNode.kind === 'ScalarTypeDefinition') {
+      typeDefs.push(convertGraphQLScaler(type.astNode));
     }
   }
 
