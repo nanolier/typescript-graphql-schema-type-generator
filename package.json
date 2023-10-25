@@ -10,9 +10,7 @@
   "bin": {
     "tgstgen": "./dist/index.js"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/sho-ts"
-  },
+  "homepage": "https://github.com/nanolier/typescript-graphql-schema-type-generator",
   "keywords": [],
   "author": "",
   "license": "ISC",
