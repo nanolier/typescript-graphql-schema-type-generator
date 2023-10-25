@@ -43,7 +43,9 @@ const convertGraphQLValue = (typeName: string): string => {
     const regex = /<([^>]+)>/;
     const match = typeName.match(regex);
 
-    if (match) return convertGraphQLValue(match[1]);
+    if (match) {
+      return `Array<${convertGraphQLValue(match[1])}>`;
+    }
   }
 
   switch (typeName) {
