@@ -1,11 +1,17 @@
 {
-  "name": "typescript-graphql-schema-type-generator",
+  "name": "@nanolier/typescript-graphql-schema-type-generator",
   "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "./dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc"
+  },
+  "bin": {
+    "tgstgen": "./dist/index.js"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/sho-ts"
   },
   "keywords": [],
   "author": "",
