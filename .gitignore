@@ -200,4 +200,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# test
+.test/
+
 # End of https://www.toptal.com/developers/gitignore/api/node,macos,windows
