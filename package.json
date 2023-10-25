@@ -4,8 +4,8 @@
   "description": "",
   "main": "./dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc"
+    "build": "tsc",
+    "test:e2e": "ts-node ./src/index.ts ./.test/schema.graphql ./.test/schema.graphql.ts"
   },
   "bin": {
     "tgstgen": "./dist/index.js"
@@ -18,7 +18,8 @@
     "graphql": "^16.8.1"
   },
   "devDependencies": {
-    "typescript": "^5.2.2",
-    "@types/node": "^20.8.8"
+    "@types/node": "^20.8.8",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
   }
 }
