@@ -1,11 +1,11 @@
 {
   "name": "@nanolier/typescript-graphql-schema-type-generator",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "",
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc",
-    "test:e2e": "ts-node ./src/index.ts ./.test/schema.graphql ./.test/schema.graphql.ts"
+    "test:e2e": "ts-node ./src/index.ts --schema=./.test/schema.graphql --output=./.test/schema.graphql.ts --nullableType=relay --noFutureProofEnums=false --onlyEnum=false"
   },
   "bin": {
     "tgstgen": "./dist/index.js"

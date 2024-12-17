@@ -14,8 +14,22 @@ import {
   ScalarTypeDefinitionNode,
 } from 'graphql';
 
-const schemaPath = process.argv[2] ?? './schema.graphql';
-const outputPath = process.argv[3] ?? './src/__generated__/schema.graphql.ts';
+const args = process.argv.slice(2);
+
+const parsedArgs: Record<string, string> = {};
+args.forEach((arg) => {
+  const [key, value] = arg.split('=');
+
+  if (key && value) {
+    parsedArgs[key.replace('--', '')] = value;
+  }
+});
+
+const schemaPath = parsedArgs.schema ?? './schema.graphql';
+const outputPath = parsedArgs.output ?? './src/__generated__/schema.graphql.ts';
+const noFutureProofEnums = parsedArgs.noFutureProofEnums ? parsedArgs.noFutureProofEnums === 'true' : false;
+const nullString = parsedArgs.nullableType === 'relay-classic' ? 'null' : 'null | undefined';
+const onlyEnum = parsedArgs.onlyEnum ? parsedArgs.onlyEnum === 'true' : false;
 const schemaSDL = fs.readFileSync(schemaPath, 'utf-8');
 
 const getType = (typeNode: TypeNode): string => {
@@ -35,7 +49,10 @@ const convertGraphQLEnum = (node: EnumTypeDefinitionNode): string => {
   if (!node.values) return '';
 
   const enumValues = node.values.map((value) => `"${value.name.value}"`).join(' | ');
-  return `export type ${node.name.value} = ${enumValues} | "%future added value";`;
+
+  const futureValue = noFutureProofEnums ? '' : '| "%future added value"';
+
+  return `export type ${node.name.value} = ${enumValues}${futureValue};`;
 };
 
 const convertGraphQLValue = (typeName: string): string => {
@@ -68,7 +85,7 @@ const convertGraphQLObject = (type: ObjectTypeDefinitionNode | InterfaceTypeDefi
   const fields = type.fields
     .map((field) => {
       const fieldType = getType(field.type);
-      const nullable = field.type.kind !== 'NonNullType' ? ' | null' : '';
+      const nullable = field.type.kind !== 'NonNullType' ? ` | ${nullString}` : '';
 
       return `${field.name.value}: ${convertGraphQLValue(fieldType)}${nullable}`;
     })
@@ -104,14 +121,20 @@ const parseGraphQLSchemaToTypeAliasString = (schema: GraphQLSchema): string => {
   for (const type of Object.values(schema.getTypeMap())) {
     if (!type.astNode) continue;
 
-    if (type.astNode.kind === 'ObjectTypeDefinition' || type.astNode.kind === 'InterfaceTypeDefinition') {
-      typeDefs.push(convertGraphQLObject(type.astNode));
-    } else if (type.astNode.kind === 'EnumTypeDefinition') {
-      unionTypes.push(convertGraphQLEnum(type.astNode));
-    } else if (type.astNode.kind === 'UnionTypeDefinition') {
-      typeDefs.push(convertGraphQLUnion(type.astNode));
-    } else if (type.astNode.kind === 'ScalarTypeDefinition') {
-      typeDefs.push(convertGraphQLScaler(type.astNode));
+    if (!onlyEnum) {
+      if (type.astNode.kind === 'ObjectTypeDefinition' || type.astNode.kind === 'InterfaceTypeDefinition') {
+        typeDefs.push(convertGraphQLObject(type.astNode));
+      } else if (type.astNode.kind === 'EnumTypeDefinition') {
+        unionTypes.push(convertGraphQLEnum(type.astNode));
+      } else if (type.astNode.kind === 'UnionTypeDefinition') {
+        typeDefs.push(convertGraphQLUnion(type.astNode));
+      } else if (type.astNode.kind === 'ScalarTypeDefinition') {
+        typeDefs.push(convertGraphQLScaler(type.astNode));
+      }
+    } else {
+      if (type.astNode.kind === 'EnumTypeDefinition') {
+        unionTypes.push(convertGraphQLEnum(type.astNode));
+      }
     }
   }
 
