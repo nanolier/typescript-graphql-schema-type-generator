@@ -61,7 +61,7 @@ const convertGraphQLValue = (typeName: string): string => {
     const match = typeName.match(regex);
 
     if (match) {
-      return `Array<${convertGraphQLValue(match[1])}>`;
+      return `Readonly<Array<${convertGraphQLValue(match[1])}>>`;
     }
   }
 
@@ -90,7 +90,7 @@ const convertGraphQLObject = (type: ObjectTypeDefinitionNode | InterfaceTypeDefi
       return `${field.name.value}: ${convertGraphQLValue(fieldType)}${nullable}`;
     })
     .join('; ');
-  return `export type ${type.name.value} = { ${fields} };`;
+  return `export type ${type.name.value} = Readonly<{ ${fields} }>;`;
 };
 
 const convertGraphQLUnion = (node: UnionTypeDefinitionNode) => {
