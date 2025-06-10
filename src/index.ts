@@ -27,9 +27,15 @@ args.forEach((arg) => {
 
 const schemaPath = parsedArgs.schema ?? './schema.graphql';
 const outputPath = parsedArgs.output ?? './src/__generated__/schema.graphql.ts';
-const noFutureProofEnums = parsedArgs.noFutureProofEnums ? parsedArgs.noFutureProofEnums === 'true' : false;
-const nullString = parsedArgs.nullableType === 'relay-classic' ? 'null' : 'null | undefined';
+const noFutureProofEnums = parsedArgs.noFutureProofEnums
+  ? parsedArgs.noFutureProofEnums === 'true'
+  : false;
+const nullString =
+  parsedArgs.nullableType === 'relay-classic' ? 'null' : 'null | undefined';
 const onlyEnum = parsedArgs.onlyEnum ? parsedArgs.onlyEnum === 'true' : false;
+const constEnum = parsedArgs.constEnum
+  ? parsedArgs.constEnum === 'true'
+  : false;
 const schemaSDL = fs.readFileSync(schemaPath, 'utf-8');
 
 const getType = (typeNode: TypeNode): string => {
@@ -48,11 +54,32 @@ const getType = (typeNode: TypeNode): string => {
 const convertGraphQLEnum = (node: EnumTypeDefinitionNode): string => {
   if (!node.values) return '';
 
-  const enumValues = node.values.map((value) => `"${value.name.value}"`).join(' | ');
+  const enumValues = node.values
+    .map((value) => `"${value.name.value}"`)
+    .join(' | ');
 
   const futureValue = noFutureProofEnums ? '' : '| "%future added value"';
 
-  return `export type ${node.name.value} = ${enumValues}${futureValue};`;
+  const types = `export type ${node.name.value} = ${enumValues}${futureValue};`;
+
+  if (constEnum) {
+    const constEnumValues = node.values
+      .map((value) => `  ${value.name.value}: "${value.name.value}"`)
+      .join(',\n');
+    
+    const futureValue = noFutureProofEnums ? '' : ',\n  "%future added value": "%future added value"';
+
+    // PascalCase to UpperSnakeCase
+    const enumName = node.name.value.replace(/([A-Z])/g, "_$1")
+    .replace(/^_/, "")
+    .toUpperCase();
+
+    const constEnums = `export const ${enumName} = {\n${constEnumValues}${futureValue}\n} as const;`;
+
+    return `${types}\n${constEnums}`;
+  }
+
+  return types;
 };
 
 const convertGraphQLValue = (typeName: string): string => {
@@ -79,15 +106,20 @@ const convertGraphQLValue = (typeName: string): string => {
   }
 };
 
-const convertGraphQLObject = (type: ObjectTypeDefinitionNode | InterfaceTypeDefinitionNode): string => {
+const convertGraphQLObject = (
+  type: ObjectTypeDefinitionNode | InterfaceTypeDefinitionNode
+): string => {
   if (!type.fields) return '';
 
   const fields = type.fields
     .map((field) => {
       const fieldType = getType(field.type);
-      const nullable = field.type.kind !== 'NonNullType' ? ` | ${nullString}` : '';
+      const nullable =
+        field.type.kind !== 'NonNullType' ? ` | ${nullString}` : '';
 
-      return `${field.name.value}: ${convertGraphQLValue(fieldType)}${nullable}`;
+      return `${field.name.value}: ${convertGraphQLValue(
+        fieldType
+      )}${nullable}`;
     })
     .join('; ');
   return `export type ${type.name.value} = Readonly<{ ${fields} }>;`;
@@ -122,7 +154,10 @@ const parseGraphQLSchemaToTypeAliasString = (schema: GraphQLSchema): string => {
     if (!type.astNode) continue;
 
     if (!onlyEnum) {
-      if (type.astNode.kind === 'ObjectTypeDefinition' || type.astNode.kind === 'InterfaceTypeDefinition') {
+      if (
+        type.astNode.kind === 'ObjectTypeDefinition' ||
+        type.astNode.kind === 'InterfaceTypeDefinition'
+      ) {
         typeDefs.push(convertGraphQLObject(type.astNode));
       } else if (type.astNode.kind === 'EnumTypeDefinition') {
         unionTypes.push(convertGraphQLEnum(type.astNode));
