@@ -1,11 +1,11 @@
 {
   "name": "@nanolier/typescript-graphql-schema-type-generator",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "",
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc",
-    "test:e2e": "ts-node ./src/index.ts --schema=./.test/schema.graphql --output=./.test/schema.graphql.ts --nullableType=relay --noFutureProofEnums=false --onlyEnum=false"
+    "test:e2e": "tsx ./src/index.ts --schema=./.test/schema.graphql --output=./.test/schema.graphql.ts --nullableType=relay --noFutureProofEnums=false --onlyEnum=false --constEnum=true"
   },
   "bin": {
     "tgstgen": "./dist/index.js"
@@ -15,11 +15,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "graphql": "^16.8.1"
+    "graphql": "16.11.0"
   },
   "devDependencies": {
-    "@types/node": "^20.8.8",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.2.2"
+    "@types/node": "20.8.8",
+    "tsx": "4.19.4",
+    "typescript": "5.8.3"
+  },
+  "volta": {
+    "node": "22.13.0",
+    "pnpm": "10.12.1"
   }
 }
